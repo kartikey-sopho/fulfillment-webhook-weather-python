@@ -28,6 +28,10 @@ import os
 from flask import Flask
 from flask import request
 from flask import make_response
+from nsepy import get_history
+from datetime import date
+from nsetools import Nse
+nse = Nse()
 
 # Flask app should start in global layout
 app = Flask(__name__)
@@ -50,27 +54,30 @@ def webhook():
 
 
 def processRequest(req):
-    if req.get("result").get("action") != "yahooWeatherForecast":
+    if req.get("result").get("action") != "Stock_search":
         return {}
-    baseurl = "https://query.yahooapis.com/v1/public/yql?"
+    #baseurl = "https://query.yahooapis.com/v1/public/yql?"
     yql_query = makeYqlQuery(req)
     if yql_query is None:
         return {}
-    yql_url = baseurl + urlencode({'q': yql_query}) + "&format=json"
-    result = urlopen(yql_url).read()
-    data = json.loads(result)
-    res = makeWebhookResult(data)
-    return res
+    #yql_url = baseurl + urlencode({'q': yql_query}) + "&format=json"
+    
+    return 0
 
 
 def makeYqlQuery(req):
     result = req.get("result")
     parameters = result.get("parameters")
-    city = parameters.get("geo-city")
-    if city is None:
+    Stock = parameters.get("Stock_Name")
+    
+    if Stock is None:
         return None
-
-    return "select * from weather.forecast where woeid in (select woeid from geo.places(1) where text='" + city + "')"
+    if nse.is_valid_code('infy'):
+        	q = nse.get_quote(Stock)    
+ 
+ top_gainers = nse.get_top_gainers()
+ top_losers = nse.get_top_losers()
+    return "select * from weather.forecast where woeid in (select woeid from geo.places(1) where text='" + Stock + "')"
 
 
 def makeWebhookResult(data):
@@ -98,8 +105,8 @@ def makeWebhookResult(data):
 
     # print(json.dumps(item, indent=4))
 
-    speech = "Today in " + location.get('city') + ": " + condition.get('text') + \
-             ", the temperature is " + condition.get('temp') + " " + units.get('temperature')
+    speech = "The price of" + q['companyName'] + " is " + q['buyPrice3'] + 
+             " with a change of " + q['change'] + " with a day high and low of " + q['dayHigh'] + q['dayLow'] + "respectively."
 
     print("Response:")
     print(speech)
